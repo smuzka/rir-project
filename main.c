@@ -1,34 +1,3 @@
-smuzka
-smuzka
-Dostępny
-
-smuzka — Dziś o 14:25
-hej
-#include <stdio.h>
-#include <stdlib.h>
-#include <mpi.h>
-
-#define MAT_SIZE 4 // Change this to the size of your matrices
-#define ROOT 0
-Rozwiń
-message.txt
-4 KB
-gracz — Dziś o 14:26
-#include <stdio.h>
-#include <stdlib.h>
-#include <mpi.h>
-
-#define N 4 // Rozmiar macierzy kwadratowych
-Rozwiń
-message.txt
-4 KB
-smuzka — Dziś o 14:57
-Stworzyłem nowy komunikator, bo chyba z nim coś się tam jebało. Dostaje teraz errory chuj wie o czym xD
-
-Zrobię repo i to tam wrzucę
-﻿
-gracz
-gracz1480
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpi.h>
@@ -45,7 +14,7 @@ void matrix_multiply(int *a, int *b, int *c, int size) {
     }
 }
 
-void cannon_algorithm(int *a, int *b, int *c, int size, int my_rank, int p) {
+void cannon_algorithm(int *a, int *b, int *c, int size, int my_rank, int p, MPI_Comm *cart_comm) {
     int *temp_a = (int *)malloc(size * size * sizeof(int));
     int *temp_b = (int *)malloc(size * size * sizeof(int));
     int *temp_c = (int *)calloc(size * size, sizeof(int));
@@ -55,7 +24,7 @@ void cannon_algorithm(int *a, int *b, int *c, int size, int my_rank, int p) {
     int coords[2], my_coords[2];
     int source, dest;
     int left, right, up, down;
-    
+
     // Inicjalizacja koordynatów siatki
     coords[0] = my_rank / p;
     coords[1] = my_rank % p;
@@ -63,23 +32,24 @@ void cannon_algorithm(int *a, int *b, int *c, int size, int my_rank, int p) {
     for (int step = 0; step < p; ++step) {
         // Przesunięcie macierzy a
         shift = (coords[0] + step) % p;
-        MPI_Cart_shift(MPI_COMM_WORLD, 1, -shift, &left, &right);
+
+        MPI_Cart_shift(*cart_comm, 1, -shift, &left, &right);
         MPI_Sendrecv_replace(a, size * size, MPI_INT, left, 0, right, 0, MPI_COMM_WORLD, &status);
 
         // Przesunięcie macierzy b
         shift = (coords[1] + step) % p;
-        MPI_Cart_shift(MPI_COMM_WORLD, 0, -shift, &up, &down);
+        MPI_Cart_shift(*cart_comm, 0, -shift, &up, &down);
         MPI_Sendrecv_replace(b, size * size, MPI_INT, up, 0, down, 0, MPI_COMM_WORLD, &status);
 
         // Mnożenie macierzy lokalnych
         matrix_multiply(a, b, temp_c, size);
 
         // Przesunięcie macierzy a w kierunku poziomym
-        MPI_Cart_shift(MPI_COMM_WORLD, 1, -1, &left, &right);
+        MPI_Cart_shift(*cart_comm, 1, -1, &left, &right);
         MPI_Sendrecv_replace(a, size * size, MPI_INT, left, 0, right, 0, MPI_COMM_WORLD, &status);
 
         // Przesunięcie macierzy b w kierunku pionowym
-        MPI_Cart_shift(MPI_COMM_WORLD, 0, -1, &up, &down);
+        MPI_Cart_shift(*cart_comm, 0, -1, &up, &down);
         MPI_Sendrecv_replace(b, size * size, MPI_INT, up, 0, down, 0, MPI_COMM_WORLD, &status);
     }
 
@@ -92,15 +62,27 @@ void cannon_algorithm(int *a, int *b, int *c, int size, int my_rank, int p) {
 }
 
 int main(int argc, char *argv[]) {
-    int my_rank, p;
     int *matrix_a, *matrix_b, *matrix_c;
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &p);
 
-    int size = N;
+    int my_rank, size;
+    int dims[2] = {2, 2};
+    int periods[2] = {0, 0};
+
+    MPI_Comm cart_comm;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+
+    if (size != 4) {
+        printf("This program requires exactly 4 processes.\n");
+        MPI_Finalize();
+        return EXIT_FAILURE;
+    }
+
+    MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 0, &cart_comm);
 
     if (my_rank == 0) {
+        printf("test");
         // Inicjalizacja macierzy
         matrix_a = (int *)malloc(size * size * sizeof(int));
         matrix_b = (int *)malloc(size * size * sizeof(int));
@@ -121,7 +103,7 @@ int main(int argc, char *argv[]) {
     MPI_Bcast(matrix_b, size * size, MPI_INT, 0, MPI_COMM_WORLD);
 
     // Mnożenie macierzy algorytmem Cannona
-    cannon_algorithm(matrix_a, matrix_b, matrix_c, size, my_rank, p);
+    cannon_algorithm(matrix_a, matrix_b, matrix_c, size, my_rank, size, &cart_comm);
 
     if (my_rank == 0) {
         // Wyświetlenie wyniku
@@ -137,8 +119,10 @@ int main(int argc, char *argv[]) {
         free(matrix_c);
     }
 
+
+    MPI_Comm_free(&cart_comm);
+
+
     MPI_Finalize();
     return 0;
 }
-message.txt
-4 KB
