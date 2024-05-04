@@ -81,26 +81,43 @@ int main(int argc, char *argv[]) {
 
     MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 0, &cart_comm);
 
-    if (my_rank == 0) {
-        printf("test");
-        // Inicjalizacja macierzy
-        matrix_a = (int *)malloc(size * size * sizeof(int));
-        matrix_b = (int *)malloc(size * size * sizeof(int));
-        matrix_c = (int *)calloc(size * size, sizeof(int));
+    // Inicjalizacja macierzy
+    matrix_a = (int *)malloc(size * size * sizeof(int));
+    matrix_b = (int *)malloc(size * size * sizeof(int));
+    matrix_c = (int *)calloc(size * size, sizeof(int));
 
+    if (my_rank == 0) {
         // Wypełnienie macierzy losowymi wartościami (możesz to zmodyfikować)
         for (int i = 0; i < size * size; ++i) {
             matrix_a[i] = rand() % 10;
             matrix_b[i] = rand() % 10;
         }
+
+        printf("Macierz A\n");
+        for (int i = 0; i < 16; i++) {
+            printf("%d ", matrix_a[i]);
+            if (i % 4 == 3) {
+                printf("\n");
+            }
+        }
+        printf("\n");
+
+        printf("Macierz B\n");
+        for (int i = 0; i < 16; i++) {
+            printf("%d ", matrix_b[i]);
+            if (i % 4 == 3) {
+                printf("\n");
+            }
+        }
+        printf("\n");
     }
 
     // Rozgłaszanie rozmiaru macierzy do innych procesów
     MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
     // Rozgłaszanie macierzy a i b do wszystkich procesów
-    MPI_Bcast(matrix_a, size * size, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(matrix_b, size * size, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(matrix_a, size * size, MPI_INT, 0, cart_comm);
+        MPI_Bcast(matrix_b, size * size, MPI_INT, 0, cart_comm);
 
     // Mnożenie macierzy algorytmem Cannona
     cannon_algorithm(matrix_a, matrix_b, matrix_c, size, my_rank, size, &cart_comm);
