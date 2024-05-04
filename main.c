@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <mpi.h>
 
-#define N 4 // Rozmiar macierzy kwadratowych
-
 void matrix_multiply(int *a, int *b, int *c, int size) {
     for (int i = 0; i < size; ++i) {
         for (int j = 0; j < size; ++j) {
@@ -94,18 +92,18 @@ int main(int argc, char *argv[]) {
         }
 
         printf("Macierz A\n");
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < size * size; i++) {
             printf("%d ", matrix_a[i]);
-            if (i % 4 == 3) {
+            if (i % size == size - 1) {
                 printf("\n");
             }
         }
         printf("\n");
 
         printf("Macierz B\n");
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < size * size; i++) {
             printf("%d ", matrix_b[i]);
-            if (i % 4 == 3) {
+            if (i % size == size - 1) {
                 printf("\n");
             }
         }
@@ -116,8 +114,8 @@ int main(int argc, char *argv[]) {
     MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
     // Rozgłaszanie macierzy a i b do wszystkich procesów
-        MPI_Bcast(matrix_a, size * size, MPI_INT, 0, cart_comm);
-        MPI_Bcast(matrix_b, size * size, MPI_INT, 0, cart_comm);
+    MPI_Bcast(matrix_a, size * size, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(matrix_b, size * size, MPI_INT, 0, MPI_COMM_WORLD);
 
     // Mnożenie macierzy algorytmem Cannona
     cannon_algorithm(matrix_a, matrix_b, matrix_c, size, my_rank, size, &cart_comm);
