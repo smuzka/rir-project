@@ -77,6 +77,11 @@ bool read_matrix(const char* file_name, int size, int* matrix)
 }
 
 int main(int argc, char* argv[]) {
+    if (argc != 4) {
+        printf("Please enter three arguments <string1> <string2> <integer>");
+        return EXIT_FAILURE;
+    }
+
     //Init
     int myid, numprocs;
     int element_width = 2;
@@ -86,7 +91,7 @@ int main(int argc, char* argv[]) {
     MPI_Bcast(&numprocs, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
     //Create matrix A and B
-    int size = 3;
+    int size = std::atoi(argv[3]);
     if (size * size != numprocs) {
         if (myid == 0) {
             printf("This program requires one process for every matrix element!\n");
@@ -100,7 +105,7 @@ int main(int argc, char* argv[]) {
     int* matrix_c = (int*)calloc(size * size, sizeof(int));
 
     bool success_reading_data = false;
-    if (myid == 0 && read_matrix("matrix_A3.txt", size, matrix_a) && read_matrix("matrix_B3.txt", size, matrix_b)) {
+    if (myid == 0 && read_matrix(argv[1], size, matrix_a) && read_matrix(argv[2], size, matrix_b)) {
         success_reading_data = true;
         printf("Matrix A\n");
         for (int i = 0; i < size; i++) {
